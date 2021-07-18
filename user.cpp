@@ -10,6 +10,9 @@ User::User(QString userName, QString password, QString email, QString phone, int
     this->status = status;
     this->IP = IP;
     this->port = port;
+
+    //初始化好友列表
+    this->friendsList = new QStringList;
 }
 
 QString User::toString()

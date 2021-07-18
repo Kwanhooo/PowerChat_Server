@@ -17,6 +17,8 @@ public:
     QString IP;
     quint16 port;
 
+    QStringList *friendsList;
+
     QString toString();
 };
 

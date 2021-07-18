@@ -16,9 +16,11 @@ PowerServer::PowerServer(QWidget *parent) :
     //从UserListConfig.user文件中加载用户信息
     this->loadUserConfig();
 
-    //更新用户列表
-    //从UserList中分列到UI的在线和离线中
-    //向客户端发送UserList，以与Server端同步
+    /* 更新用户列表
+     * 从UserList中分列到UI的在线和离线中
+     * 向客户端发送UserList，以与Server端同步
+     */
+
     this->updateUserList();
 
     //设置起始的UI逻辑
