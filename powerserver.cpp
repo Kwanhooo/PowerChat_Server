@@ -179,6 +179,7 @@ void PowerServer::setupTcp()
                 }
 
                 if(response.section("##",1,1) == "REGISTER_CERTIFICATE")
+                    //##REGISTER_CERTIFICATE##usesrName##password##email##phone
                 {
                     QString userNameReg = response.section("##",2,2);
                     QString passwordReg = response.section("##",3,3);
@@ -205,6 +206,7 @@ void PowerServer::setupTcp()
                     }
                 }
                 if(response.section("##",1,1)=="REQUEST_USER_CONFIG")
+                    //##REQUEST_USER_CONFIG
                 {
                     this->updateUserList();
                     ui->btn_save->setEnabled(true);
@@ -212,9 +214,26 @@ void PowerServer::setupTcp()
                 if(response.section("##",1,1)=="GET_OFFLINE_MESSAGE")
                 {
                     QString requestUserName = response.section("##",2,2);
-                    ui->textBrowser_log->append("准备调起sendOfflineMessage");
+                    ui->textBrowser_log->append("准备调起sendOfflineMessage()");
                     this->sendOfflineMessage(requestUserName,tcpSocket[socketIndex]);
                 }
+                if(response.section("##",1,1)=="STATUS_CHANGE_REQUEST")
+                    //##STATUS_CHANGE_REQUEST##USERNAME##STATUS(INT)
+                {
+                    QString requestUserName = response.section("##",2,2);
+                    int statusToChange = response.section("##",3,3).toInt();
+
+                    for (int i = 0;i < userListSize;i++)
+                    {
+                        if(userList[i]->userName==requestUserName)
+                        {
+                            userList[i]->status = statusToChange;
+                            this->updateUserList();//向所有用户广播
+                            break;
+                        }
+                    }
+                }
+
             }
 
             else//这是一个中转消息
@@ -232,7 +251,7 @@ void PowerServer::setupTcp()
                     {
                         ui->textBrowser_log->append(QString("已找到接收者：%1").arg(userList[i]->userName));
 
-                        if(userList[i]->status==1)//如果接收者在线
+                        if(userList[i]->status>=1)//如果接收者在线，隐身对于Server端也算是在线，按照在线的方式发送
                         {
                             ui->textBrowser_log->append(QString("接收者在线"));
                             for (int j = 0;j < currentUserAmount;j++)//搜索socket列表，找到接收者的socket
@@ -309,6 +328,7 @@ void PowerServer::sendOfflineMessage(QString requestUserName,QTcpSocket *tcpSock
     ui->textBrowser_log->append("离线消息发送完成");
 
     //清理已经发送过的消息
+    //2021.7.18  --- 出了问题，发送两条及以上的离线消息会炸开，要么就是拉取离线消息时炸开
 //    offlineBuffer->deleteSendedMsg();
 }
 
@@ -327,7 +347,7 @@ void PowerServer::updateUserList()
     for(int i = 0; i< userListSize; i++)
     {
         updateCommand = updateCommand.append(userList[i]->toString());
-        if(userList[i]->status == 1)
+        if(userList[i]->status >= 1)
         {
             ui->textBrowser_online->append(userList[i]->userName);
             onlineAmount++;
