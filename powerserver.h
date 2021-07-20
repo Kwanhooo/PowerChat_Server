@@ -8,6 +8,7 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QtNetwork>
+#include <QtGui>
 
 #include <QTime>
 #include <QTimer>

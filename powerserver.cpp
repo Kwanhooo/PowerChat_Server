@@ -115,7 +115,7 @@ void PowerServer::setupTcp()
 
             for(int i=0; i< userListSize; i++)
             {
-                if(userList[i]->IP == newIP)
+                if(userList[i]->IP == newIP && userList[i]->port == newPort)
                 {
                     ui->textBrowser_log->append(QString("%1离线了").arg(userList[i]->userName));
                     userList[i]->status = 0; //离线
@@ -173,11 +173,9 @@ void PowerServer::setupTcp()
                             userList[i]->status = 1;
                             //写入日志
                             ui->textBrowser_log->append(QString("%1现已上线").arg(userNameToValidate));
-
                             break;
                         }
                     }
-
                     if(isMatch)
                         tcpSocket[socketIndex]->write(QString("##LOGIN_SUCCESS##%1").arg(userNameToValidate).toUtf8());
                     else
@@ -219,7 +217,7 @@ void PowerServer::setupTcp()
                 {
                     QString requestUserName = response.section("##",2,2);
                     this->updateServerInterface();
-                    this->updateClientInterface(requestUserName);
+                    this->updateClientInterface();//////////////////////////////////////////////////////
                     ui->btn_save->setEnabled(true);
                 }
 
@@ -243,6 +241,11 @@ void PowerServer::setupTcp()
                         if(userList[i]->userName == requestUserName)
                         {
                             userList[i]->status = statusToChange;
+                            //如果是离线请求，则Server端与Client断开连接
+                            if(statusToChange == 0)
+                            {
+                                tcpSocket[socketIndex]->disconnect();
+                            }
                             this->updateServerInterface();//更新Server端UI
                             this->updateClientInterface();//向Client广播
                             break;
@@ -339,16 +342,15 @@ void PowerServer::setupTcp()
                                 userList[i]->friendsList->append(requester);
                             }
                         }
-
-                        //刷新两者的客户端UI
-                        updateClientInterface(requester);
-                        updateClientInterface(friendName);
                     }
 
                     //现在通知请求者:对方是否同意了请求
                     //如果请求者在线，则直接找到他的socket发送请求
+                    ui->textBrowser_log->append(QString("现在通知%1添加%2的结果").arg(requester).arg(friendName));
                     if(userList[indexOfRequester]->status != 0)
                     {
+                        ui->textBrowser_log->append(QString("请求者%1在线").arg(requester));
+
                         QString requestReturnCommand = "##FRIEND_REQUEST_STATUS##";
                         requestReturnCommand.append(friendName);
                         requestReturnCommand.append("##");
@@ -361,7 +363,8 @@ void PowerServer::setupTcp()
                                     tcpSocket[i]->peerPort() == userList[indexOfRequester]->port)
                             {
                                 tcpSocket[i]->write(requestReturnCommand.toUtf8());
-                                ui->textBrowser_log->append(QString("消息已发送至%1:%2").arg(tcpSocket[i]->peerAddress().toString().section(":",3,3)).arg(tcpSocket[i]->peerPort()));
+                                ui->textBrowser_log->append(QString("添加结果已发送至%1:%2").arg(tcpSocket[i]->peerAddress().toString().section(":",3,3)).arg(tcpSocket[i]->peerPort()));
+                                break;
                             }
                         }
                     }
@@ -371,12 +374,16 @@ void PowerServer::setupTcp()
                         //需要更换标志符号，重制命令，因为##会与OFFLINE_MESSAGE命令冲突
                         QString offlineRequestCommand = "@@FRIEND_REQUEST_STATUS@@";
                         offlineRequestCommand.append(friendName);
+                        offlineRequestCommand.append("@@");
                         offlineRequestCommand.append(requestStatus);
                         //最终命令形式
                         //@@FRIEND_REQUEST_STATUS@@FRIENDNAME@@STATUS
-                        offlineBuffer->addMsg(requester,friendName,offlineRequestCommand);
+                        offlineBuffer->addMsg(friendName,requester,offlineRequestCommand);
                     }
+                    this->updateClientInterface();
                 }
+
+
                 //不在设计内的，以##开头的未知指令
                 else
                 {
@@ -457,7 +464,7 @@ void PowerServer::sendOfflineMessage(QString requestUserName,QTcpSocket *tcpSock
     while(a!=nullptr)
     {
         qDebug()<<QString("收:%1  发:%2  消息:%3").arg(a->sender).arg(a->recipient).arg(a->msg)<<endl;
-        if(a-> recipient == requestUserName)
+        if(a-> recipient == requestUserName && a->isSent == false)
         {
             totalMessage.append(QString("%1&&%2&&%3##").arg(a->sender).arg(a->msg).arg(a->recipient));
             amount++;
@@ -498,7 +505,7 @@ void PowerServer::updateServerInterface()
     int onlineAmount = 0, offlineAmount=0;
 
 
-    QString updateCommand = QString("##UPDATE_USER_CONFIG##%1##").arg(userListSize);//准备给Client发送的更新用户列表的指令
+    QString updateCommand = QString("##UPDATE_USER_CONFIG##%1##*").arg(userListSize);//准备给Client发送的更新用户列表的指令
 
     //之后遍历用户列表，更新UI中的用户列表
     for(int i = 0; i< userListSize; i++)
@@ -582,6 +589,7 @@ void PowerServer::updateClientInterface(QString requestUserName)
         updateCommand.append(QString("%1").arg(friendAmount));
         updateCommand.append("##");
         updateCommand.append(infoStream);
+        updateCommand.append("*");//终止符
         //最终命令形式：
         //##UPDATE_USER_CONFIG##USERAMOUNT##INFO STREAM
 
@@ -616,15 +624,19 @@ void PowerServer::updateClientInterface()
     {
         //从userList中找到现在tcpSocket对应的用户，获取其好友列表
         QStringList friendList;
+        int indexOfCurrentUser = 0;
         for (int j = 0;j < userListSize;j++)
         {
             if(tcpSocket[i]->peerAddress().toString().section(":",3,3) == userList[j]->IP &&
                     tcpSocket[i]->peerPort() == userList[j]->port)
             {
                 friendList = *(userList[j]->friendsList);
+                indexOfCurrentUser = j;
                 break;
             }
         }
+
+        ui->textBrowser_log->append(QString("当前更新%1的用户列表......").arg(userList[indexOfCurrentUser]->userName));
 
         //遍历当前用户的好友列表friendList，合成用户列表串infoStream
         QString updateCommand = "##UPDATE_USER_CONFIG##";
@@ -648,9 +660,12 @@ void PowerServer::updateClientInterface()
         updateCommand.append(QString("%1").arg(friendAmount));
         updateCommand.append("##");
         updateCommand.append(infoStream);
+        updateCommand.append("*");//终止符
         if(tcpSocket[i]->isOpen())
         {
             tcpSocket[i]->write(updateCommand.toUtf8());
+            ui->textBrowser_log->append(QString("<font color=blue>来自%1的更新用户列表请求，发送命令如下：</font>").arg(userList[indexOfCurrentUser]->userName));
+            ui->textBrowser_log->append(QString("<font color=blue>%1</font>").arg(updateCommand));
             ui->textBrowser_log->append(QString("<font color=green>命令已发送至%1:%2</font>").arg(tcpSocket[i]->peerAddress().toString().section(":",3,3)).arg(tcpSocket[i]->peerPort()));
         }
         else
@@ -686,8 +701,17 @@ void PowerServer::loadUserConfig()
                 read >> email;
                 read >> phone;
                 userList[userListSize] = new User(userName, password, email, phone);
-                userListSize++;
+
                 qDebug()<<"userListSize = "<< userListSize <<endl;
+                QString friendAmount;
+                read >> friendAmount;
+                for (int i = 0;i < friendAmount.toInt();i++)
+                {
+                    QString friendName;
+                    read >> friendName;
+                    userList[userListSize]->friendsList->append(friendName);
+                }
+                userListSize++;
             }
             else
             {
@@ -725,6 +749,15 @@ void PowerServer::on_btn_save_clicked()//将用户列表保存至外部文档
             output.append(QString(" ").toUtf8());
             output.append(userList[i]->phone.toUtf8());
             output.append(QString(" ").toUtf8());
+
+            QStringList temp = *(userList[i]->friendsList);
+            output.append(QString("%1").arg(temp.count()).toUtf8());
+            output.append(QString(" ").toUtf8());
+            for (QList<QString>::iterator it = temp.begin();it != temp.end();it++)
+            {
+                output.append(QString("%1").arg(*it).toUtf8());
+                output.append(QString(" ").toUtf8());
+            }
         }
         config.write(output.toBase64());
         config.close();
