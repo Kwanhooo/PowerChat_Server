@@ -177,7 +177,7 @@ void PowerServer::setupTcp()
                         }
                     }
                     if(isMatch)
-                        tcpSocket[socketIndex]->write(QString("##LOGIN_SUCCESS##%1").arg(userNameToValidate).toUtf8());
+                        tcpSocket[socketIndex]->write(QString("##LOGIN_SUCCESS##%1##%2").arg(userNameToValidate).arg(this->attendaceUsers.count()).toUtf8());
                     else
                         tcpSocket[socketIndex]->write(QString("##LOGIN_FAILED").toUtf8());
                 }
@@ -207,7 +207,7 @@ void PowerServer::setupTcp()
                         userList[userListSize] = new User(userNameReg,passwordReg,emailReg,phoneReg,1,newIP,newPort);
                         userListSize++;
 
-                        tcpSocket[socketIndex]->write(QString("##REGISTER_SUCCESS##%1").arg(userNameReg).toUtf8());
+                        tcpSocket[socketIndex]->write(QString("##REGISTER_SUCCESS##%1##%2").arg(userNameReg).arg(this->attendaceUsers.count()).toUtf8());
                     }
                 }
 
@@ -383,6 +383,32 @@ void PowerServer::setupTcp()
                     this->updateClientInterface();
                 }
 
+
+                else if(response.section("##",1,1) == "ATTENDANCE")
+                    //ATTENDANCE##USERNAME
+                {
+                    QString attendanceName = response.section("##",2,2);
+                    if(!attendaceUsers.contains(attendanceName))
+                    {
+                        //##ATTENDANCE_STATUS##STATUS##ATTENDANCE_AMOUNT
+                        attendaceUsers.append(attendanceName);
+                        QString attendanceCommand = "##ATTENDANCE_STATUS##SUCCESS##";
+                        attendanceCommand.append(QString("%1").arg(attendaceUsers.count()));
+                        tcpSocket[socketIndex]->write(attendanceCommand.toUtf8());
+                        for (int i = 0;i < currentUserAmount;i++)
+                        {
+                            if(i == socketIndex)
+                                continue;
+                            tcpSocket[i]->write(QString("##ATTENDANCE_AMOUNT##%1").arg(this->attendaceUsers.count()).toUtf8());
+                        }
+                    }
+                    else
+                    {
+                        QString attendanceCommand = "##ATTENDANCE_STATUS##FAILED##";
+                        attendanceCommand.append(QString("%1").arg(attendaceUsers.count()));
+                        tcpSocket[socketIndex]->write(attendanceCommand.toUtf8());
+                    }
+                }
 
                 //不在设计内的，以##开头的未知指令
                 else
@@ -821,4 +847,9 @@ void PowerServer::on_btn_deleteUser_clicked()
         updateServerInterface();//更新Server端的UI
         ui->lineEdit_deleteName->clear();
     }
+}
+
+void PowerServer::on_btn_clear_attendance_clicked()
+{
+    this->attendaceUsers.clear();
 }

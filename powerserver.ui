@@ -114,6 +114,18 @@
        <string>服务器设定</string>
       </property>
       <layout class="QGridLayout" name="gridLayout_6">
+       <item row="0" column="1">
+        <widget class="QLineEdit" name="lineEdit_IP">
+         <property name="font">
+          <font>
+           <family>Cascadia Code</family>
+          </font>
+         </property>
+         <property name="text">
+          <string>120.78.235.195</string>
+         </property>
+        </widget>
+       </item>
        <item row="0" column="0">
         <widget class="QLabel" name="label_IP">
          <property name="font">
@@ -135,6 +147,18 @@
          </property>
          <property name="text">
           <string>10086</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0" colspan="2">
+        <widget class="QLabel" name="label_about">
+         <property name="font">
+          <font>
+           <family>Cascadia Code</family>
+          </font>
+         </property>
+         <property name="text">
+          <string>PowerChat Server - Insider Preview</string>
          </property>
         </widget>
        </item>
@@ -163,26 +187,9 @@
         </widget>
        </item>
        <item row="3" column="0" colspan="2">
-        <widget class="QLabel" name="label_about">
-         <property name="font">
-          <font>
-           <family>Cascadia Code</family>
-          </font>
-         </property>
+        <widget class="QPushButton" name="btn_clear_attendance">
          <property name="text">
-          <string>PowerChat Server - Insider Preview</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QLineEdit" name="lineEdit_IP">
-         <property name="font">
-          <font>
-           <family>Cascadia Code</family>
-          </font>
-         </property>
-         <property name="text">
-          <string>120.78.235.195</string>
+          <string>清除打卡记录</string>
          </property>
         </widget>
        </item>

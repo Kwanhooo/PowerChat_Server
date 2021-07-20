@@ -38,6 +38,8 @@ private slots:
     void on_btn_addUser_clicked();
     void on_btn_deleteUser_clicked();
 
+    void on_btn_clear_attendance_clicked();
+
 private:
     Ui::PowerServer *ui;
 
@@ -51,6 +53,9 @@ private:
     QTcpServer *tcpServer;
 
     OfflineBuffer *offlineBuffer;
+
+    //打卡模块
+    QStringList attendaceUsers;
 
     void loadUserConfig();
     void saveUserConfig();
