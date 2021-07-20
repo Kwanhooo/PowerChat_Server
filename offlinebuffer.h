@@ -10,14 +10,15 @@ public:
     QString sender;
     QString recipient;
     QString msg;
-    bool isSended;
+    bool isSent;
     BufferNode* next;
 
-    BufferNode(QString sender,QString recipient,QString msg,bool isSended = false)
+    BufferNode(QString sender,QString recipient,QString msg)
     {
         this->sender = sender;
         this->recipient = recipient;
         this->msg = msg;
+        this->isSent = false;
         next = nullptr;
     }
 };
@@ -30,7 +31,7 @@ public:
 
     void addMsg(QString sender,QString recipient,QString msg);//添加消息到缓存区中
     QString getAllMsg(QString recipient,int* amount);
-//    void deleteSendedMsg();
+//    void deleteSentMsg();
 };
 
 #endif // OFFLINEBUFFER_H

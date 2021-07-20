@@ -13,6 +13,9 @@
 #include <QTimer>
 
 #include <QFile>
+#include <QString>
+#include <QStringList>
+#include <QList>
 
 #include "user.h"
 #include "offlinebuffer.h"
@@ -31,9 +34,7 @@ public:
 
 private slots:
     void on_btn_save_clicked();
-
     void on_btn_addUser_clicked();
-
     void on_btn_deleteUser_clicked();
 
 private:
@@ -59,10 +60,12 @@ private:
     void showServerConfig();
     void setupTcp();
 
+    void dealWithMessage(QString response);
     void sendOfflineMessage(QString requestUserName,QTcpSocket *tcpSocket);//处理离线消息
 
-    bool isFirstUpdate;
-    void updateUserList();
+    void updateServerInterface();
+    void updateClientInterface(QString requestUserName);//仅指定的requestUserName接受一次用户列表的刷新
+    void updateClientInterface();//所有Client都接受一次用户列表的更新
 };
 
 #endif // POWERSERVER_H

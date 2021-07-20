@@ -36,7 +36,7 @@ QString OfflineBuffer::getAllMsg(QString requestUserName,int* amount)
         {
             totalMessage.append(QString("%1&&%2&&%3##").arg(a->sender).arg(a->msg).arg(a->recipient));
             amount++;
-            a->isSended = true;
+            a->isSent = true;
             qDebug()<<QString("找到了相关离线消息，现有%1条").arg(*amount)<<endl;
         }
         a = a->next;
@@ -44,7 +44,7 @@ QString OfflineBuffer::getAllMsg(QString requestUserName,int* amount)
     return totalMessage;
 }
 
-//void OfflineBuffer::deleteSendedMsg()
+//void OfflineBuffer::deleteSentMsg()
 //{
 //    if(this->head==nullptr)
 //        return;
@@ -80,7 +80,7 @@ QString OfflineBuffer::getAllMsg(QString requestUserName,int* amount)
 //    }
 //}
 
-//void OfflineBuffer::deleteSendedMsg()
+//void OfflineBuffer::deleteSentMsg()
 //{
 //    BufferNode* temp = this->head;
 //    while(temp != nullptr && temp->isSended) //找到第一个未被发送的信息
