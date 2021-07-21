@@ -1,7 +1,7 @@
 #include "user.h"
 
 
-User::User(QString userName, QString password, QString email, QString phone, int status, QString IP, quint16 port)
+User::User(QString userName, QString password, QString email, QString phone,QString avatar,QString Bio, int status,QString IP, quint16 port)
 {
     this->userName = userName;
     this->password = password;
@@ -10,6 +10,8 @@ User::User(QString userName, QString password, QString email, QString phone, int
     this->status = status;
     this->IP = IP;
     this->port = port;
+    this->avatar = avatar;
+    this->Bio = Bio;
 
     //初始化好友列表
     this->friendsList = new QStringList;
@@ -17,5 +19,5 @@ User::User(QString userName, QString password, QString email, QString phone, int
 
 QString User::toString()
 {
-    return QString("%1 %2 %3 %4 ").arg(userName).arg(status).arg(IP).arg(port);
+    return QString("%1 %2 %3 %4 %5 %6 ").arg(userName).arg(status).arg(IP).arg(port).arg(avatar).arg(Bio);
 }

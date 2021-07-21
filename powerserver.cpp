@@ -161,7 +161,8 @@ void PowerServer::setupTcp()
                     QString passwordToValidate = response.section("##",3,3);
 
                     bool isMatch = false;
-
+                    QString avatarToSend;
+                    QString BioToSend;
                     for (int i = 0;i < userListSize;i++)
                     {
                         if(userList[i]->userName == userNameToValidate&&userList[i]->password == passwordToValidate)
@@ -171,25 +172,32 @@ void PowerServer::setupTcp()
                             userList[i]->IP = newIP;
                             userList[i]->port = newPort;
                             userList[i]->status = 1;
+
+                            //获取用户个性化信息
+                            avatarToSend = userList[i]->avatar;
+                            BioToSend = userList[i]->Bio;
+
                             //写入日志
                             ui->textBrowser_log->append(QString("%1现已上线").arg(userNameToValidate));
                             break;
                         }
                     }
                     if(isMatch)
-                        tcpSocket[socketIndex]->write(QString("##LOGIN_SUCCESS##%1##%2").arg(userNameToValidate).arg(this->attendaceUsers.count()).toUtf8());
+                        tcpSocket[socketIndex]->write(QString("##LOGIN_SUCCESS##%1##%2##%3##%4").arg(userNameToValidate).arg(this->attendaceUsers.count()).arg(avatarToSend).arg(BioToSend).toUtf8());
                     else
                         tcpSocket[socketIndex]->write(QString("##LOGIN_FAILED").toUtf8());
                 }
 
 
                 else if(response.section("##",1,1) == "REGISTER_CERTIFICATE")
-                    //##REGISTER_CERTIFICATE##usesrName##password##email##phone
+                    //##REGISTER_CERTIFICATE##usesrName##password##email##phone##avatar##Bio
                 {
                     QString userNameReg = response.section("##",2,2);
                     QString passwordReg = response.section("##",3,3);
                     QString emailReg = response.section("##",4,4);
                     QString phoneReg = response.section("##",5,5);
+                    QString avatar = response.section("##",6,6);
+                    QString Bio = response.section("##",7,7);
 
                     bool isSame = false;
                     for (int i = 0;i < userListSize;i++)
@@ -204,10 +212,10 @@ void PowerServer::setupTcp()
                         tcpSocket[socketIndex]->write(QString("##REGISTER_FAILED").toUtf8());
                     else
                     {
-                        userList[userListSize] = new User(userNameReg,passwordReg,emailReg,phoneReg,1,newIP,newPort);
+                        userList[userListSize] = new User(userNameReg,passwordReg,emailReg,phoneReg,avatar,Bio,1,newIP,newPort);
                         userListSize++;
 
-                        tcpSocket[socketIndex]->write(QString("##REGISTER_SUCCESS##%1##%2").arg(userNameReg).arg(this->attendaceUsers.count()).toUtf8());
+                        tcpSocket[socketIndex]->write(QString("##REGISTER_SUCCESS##%1##%2##%3##%4").arg(userNameReg).arg(this->attendaceUsers.count()).arg(avatar).arg(Bio).toUtf8());
                     }
                 }
 
@@ -260,60 +268,75 @@ void PowerServer::setupTcp()
                     QString requester = response.section("##",2,2);
                     QString friendNameToFind = response.section("##",3,3);
 
-                    bool isFound = false;
-                    int indexOfFriend = 0;
-                    for (int i = 0;i < userListSize;i++)
+                    if(friendNameToFind == requester)
                     {
-                        if(userList[i]->userName == friendNameToFind)
-                        {
-                            isFound = true;
-                            indexOfFriend = i;
-                            break;
-                        }
+                        tcpSocket[socketIndex]->write("##IS_FRIEND_FOUND##%1##MYSELF");
                     }
-
-                    //如果找到了friendToName的这个用户，向requester发送反馈，并将请求发送给friend
-                    if(isFound)
-                    {
-                        tcpSocket[socketIndex]->write(QString("##IS_FRIEND_FOUND##%1##TRUE").arg(friendNameToFind).toUtf8());
-                        ui->textBrowser_log->append(QString("已找到用户%1（搜索请求来自%2）").arg(friendNameToFind).arg(requester));
-
-                        ui->textBrowser_log->append(QString("现在将来自%1的好友请求发送至%2").arg(requester).arg(friendNameToFind));
-                        //将要发送至好友的请求命令
-                        //##NEW_FRIEND_REQUEST##REQUESTER
-                        QString requestCommand = "##NEW_FRIEND_REQUEST##";
-                        requestCommand.append(requester);
-
-                        //如果对方在线，则直接找到他的socket发送请求
-                        if(userList[indexOfFriend]->status != 0)
-                        {
-                            for (int i = 0;i < currentUserAmount;i++)
-                            {
-                                if(tcpSocket[i]->peerAddress().toString().section(":",3,3) == userList[indexOfFriend]->IP &&
-                                        tcpSocket[i]->peerPort() == userList[indexOfFriend]->port)
-                                {
-                                    tcpSocket[i]->write(requestCommand.toUtf8());
-                                    ui->textBrowser_log->append(QString("消息已发送至%1:%2").arg(tcpSocket[i]->peerAddress().toString().section(":",3,3)).arg(tcpSocket[i]->peerPort()));
-                                }
-                            }
-                        }
-                        //如果对方不在线，将请求放入offlineBuffer中，待其上线后发送
-                        else
-                        {
-                            //需要更换标志符号，重制命令，因为##会与OFFLINE_MESSAGE命令冲突
-                            QString offlineRequestCommand = "@@NEW_FRIEND_REQUEST@@";
-                            offlineRequestCommand.append(requester);
-                            //命令的最终形式
-                            //@@NEW_FRIEND_REQUEST@@REQUESTER
-                            offlineBuffer->addMsg(requester,friendNameToFind,offlineRequestCommand);
-                        }
-
-                    }
-                    //如果没有找到这个用户，反馈给requester，告知其查无此人
                     else
                     {
-                        tcpSocket[socketIndex]->write(QString("##IS_FRIEND_FOUND##%1##FALSE").arg(friendNameToFind).toUtf8());
-                        ui->textBrowser_log->append(QString("未找到用户%1（搜索请求来自%2）").arg(friendNameToFind).arg(requester));
+                        bool isFound = false;
+                        int indexOfFriend = 0;
+                        for (int i = 0;i < userListSize;i++)
+                        {
+                            if(userList[i]->userName == friendNameToFind)
+                            {
+                                isFound = true;
+                                indexOfFriend = i;
+                                break;
+                            }
+                        }
+
+                        if(userList[indexOfFriend]->friendsList->contains(requester))
+                        {
+                            tcpSocket[socketIndex]->write("##IS_FRIEND_FOUND##%1##EXISTED");
+                        }
+
+                        else
+                        {
+                            //如果找到了friendToName的这个用户，向requester发送反馈，并将请求发送给friend
+                            if(isFound)
+                            {
+                                tcpSocket[socketIndex]->write(QString("##IS_FRIEND_FOUND##%1##TRUE").arg(friendNameToFind).toUtf8());
+                                ui->textBrowser_log->append(QString("已找到用户%1（搜索请求来自%2）").arg(friendNameToFind).arg(requester));
+
+                                ui->textBrowser_log->append(QString("现在将来自%1的好友请求发送至%2").arg(requester).arg(friendNameToFind));
+                                //将要发送至好友的请求命令
+                                //##NEW_FRIEND_REQUEST##REQUESTER
+                                QString requestCommand = "##NEW_FRIEND_REQUEST##";
+                                requestCommand.append(requester);
+
+                                //如果对方在线，则直接找到他的socket发送请求
+                                if(userList[indexOfFriend]->status != 0)
+                                {
+                                    for (int i = 0;i < currentUserAmount;i++)
+                                    {
+                                        if(tcpSocket[i]->peerAddress().toString().section(":",3,3) == userList[indexOfFriend]->IP &&
+                                                tcpSocket[i]->peerPort() == userList[indexOfFriend]->port)
+                                        {
+                                            tcpSocket[i]->write(requestCommand.toUtf8());
+                                            ui->textBrowser_log->append(QString("消息已发送至%1:%2").arg(tcpSocket[i]->peerAddress().toString().section(":",3,3)).arg(tcpSocket[i]->peerPort()));
+                                        }
+                                    }
+                                }
+                                //如果对方不在线，将请求放入offlineBuffer中，待其上线后发送
+                                else
+                                {
+                                    //需要更换标志符号，重制命令，因为##会与OFFLINE_MESSAGE命令冲突
+                                    QString offlineRequestCommand = "@@NEW_FRIEND_REQUEST@@";
+                                    offlineRequestCommand.append(requester);
+                                    //命令的最终形式
+                                    //@@NEW_FRIEND_REQUEST@@REQUESTER
+                                    offlineBuffer->addMsg(requester,friendNameToFind,offlineRequestCommand);
+                                }
+
+                            }
+                            //如果没有找到这个用户，反馈给requester，告知其查无此人
+                            else
+                            {
+                                tcpSocket[socketIndex]->write(QString("##IS_FRIEND_FOUND##%1##FALSE").arg(friendNameToFind).toUtf8());
+                                ui->textBrowser_log->append(QString("未找到用户%1（搜索请求来自%2）").arg(friendNameToFind).arg(requester));
+                            }
+                        }
                     }
                 }
 
@@ -383,6 +406,70 @@ void PowerServer::setupTcp()
                     this->updateClientInterface();
                 }
 
+                else if(response.section("##",1,1) == "DELETE_REQUEST")
+                     //##DELETE_REQUEST##USERNAME##FRIENDNAME
+                {
+                    QString requester = response.section("##",2,2);
+                    QString friendName = response.section("##",3,3);
+                    bool isFound = false;
+                    int friendInUserList = 0;
+                    for (int i = 0;i < userListSize;i++)
+                    {
+                        if(userList[i]->userName == requester)
+                        {
+                            int indexOfFriend = userList[i]->friendsList->indexOf(friendName);
+                            if(indexOfFriend == -1)
+                            {
+                                tcpSocket[socketIndex]->write(QString("##DELETE_STATUS##%1##FAILED@@").arg(friendName).toUtf8());
+
+                                break;
+                            }
+                            else
+                            {
+                                isFound = true;
+                                tcpSocket[socketIndex]->write(QString("##DELETE_STATUS##%1##SUCCESS@@").arg(friendName).toUtf8());
+                            }
+                            userList[i]->friendsList->removeAt(indexOfFriend);
+                        }
+                        if(userList[i]->userName == friendName)
+                        {
+                            friendInUserList = i;
+                            int indexOfRequester = userList[i]->friendsList->indexOf(requester);
+                            userList[i]->friendsList->removeAt(indexOfRequester);
+                        }
+                    }
+
+                    if(isFound)
+                    {
+                        //如果对方在线，则直接找到他的socket发送删除通知
+                        if(userList[friendInUserList]->status != 0)
+                        {
+                            QString deleteNotice = "##DELETE_NOTICE##";
+                            deleteNotice.append(requester);
+                            deleteNotice.append("@@");
+                            for (int i = 0;i < currentUserAmount;i++)
+                            {
+                                if(tcpSocket[i]->peerAddress().toString().section(":",3,3) == userList[friendInUserList]->IP &&
+                                        tcpSocket[i]->peerPort() == userList[friendInUserList]->port)
+                                {
+                                    tcpSocket[i]->write(deleteNotice.toUtf8());
+                                    ui->textBrowser_log->append(QString("删除好友通知已发送至%1:%2").arg(tcpSocket[i]->peerAddress().toString().section(":",3,3)).arg(tcpSocket[i]->peerPort()));
+                                }
+                            }
+                        }
+                        //如果对方不在线，将请求放入offlineBuffer中，待其上线后发送
+                        else
+                        {
+                            //需要更换标志符号，重制命令，因为##会与OFFLINE_MESSAGE命令冲突
+                            QString offlineDeleteNotice = "@@DELETE_NOTICE@@";
+                            offlineDeleteNotice.append(requester);
+                            //命令的最终形式
+                            //@@DELETE_NOTICE@@REQUESTER
+                            offlineBuffer->addMsg(requester,friendName,offlineDeleteNotice);
+                        }
+                    }
+                    updateClientInterface();
+                }
 
                 else if(response.section("##",1,1) == "ATTENDANCE")
                     //ATTENDANCE##USERNAME
@@ -409,6 +496,34 @@ void PowerServer::setupTcp()
                         tcpSocket[socketIndex]->write(attendanceCommand.toUtf8());
                     }
                 }
+
+                else if(response.section("##",1,1) == "GROUP_MESSAGE")
+                    //##GROUP_MESSAGE##SENDER##MSG##ONLINEAMOUNT
+                {
+                    response.append("##");
+                    response.append(QString("%1").arg(ui->lineEdit_online->text()));
+
+                    //向所有在线用户广播
+                    if(response.section("##",2,2) == "UPDATE" && response.section("##",3,3) == "UPDATE")
+                    {
+                        for (int i = 0;i < currentUserAmount;i++)
+                        {
+                            tcpSocket[i]->write(response.toUtf8());
+                        }
+                    }
+
+                    //向除发送者之外的人广播
+                    else
+                    {
+                        for (int i = 0;i < currentUserAmount;i++)
+                        {
+                            if(i == socketIndex)
+                                continue;
+                            tcpSocket[i]->write(response.toUtf8());
+                        }
+                    }
+                }
+
 
                 //不在设计内的，以##开头的未知指令
                 else
@@ -715,6 +830,8 @@ void PowerServer::loadUserConfig()
         QString password = "";
         QString email = "";
         QString phone = "";
+        QString avatar = "";
+        QString Bio = "";
         userListSize = 0;
 
         while(!read.atEnd())
@@ -726,7 +843,9 @@ void PowerServer::loadUserConfig()
                 read >> password;
                 read >> email;
                 read >> phone;
-                userList[userListSize] = new User(userName, password, email, phone);
+                read >> avatar;
+                read >> Bio;
+                userList[userListSize] = new User(userName, password, email, phone,avatar,Bio);
 
                 qDebug()<<"userListSize = "<< userListSize <<endl;
                 QString friendAmount;
@@ -775,6 +894,10 @@ void PowerServer::on_btn_save_clicked()//将用户列表保存至外部文档
             output.append(QString(" ").toUtf8());
             output.append(userList[i]->phone.toUtf8());
             output.append(QString(" ").toUtf8());
+            output.append(userList[i]->avatar.toUtf8());
+            output.append(QString(" ").toUtf8());
+            output.append(userList[i]->Bio.toUtf8());
+            output.append(QString(" ").toUtf8());
 
             QStringList temp = *(userList[i]->friendsList);
             output.append(QString("%1").arg(temp.count()).toUtf8());
@@ -804,7 +927,7 @@ void PowerServer::on_btn_addUser_clicked()
         return;
     }
     ui->textBrowser_offline->append(ui->lineEdit_userName->text());
-    userList[userListSize] = new User(ui->lineEdit_userName->text(), ui->lineEdit_password->text(), ui->lineEdit_email->text(), ui->lineEdit_phone->text());
+    userList[userListSize] = new User(ui->lineEdit_userName->text(), ui->lineEdit_password->text(), ui->lineEdit_email->text(), ui->lineEdit_phone->text(),"1","这个人很懒，什么都没有写");
     userListSize++;
 
     ui->lineEdit_userName->clear();
@@ -837,7 +960,7 @@ void PowerServer::on_btn_deleteUser_clicked()
     else
     {
         //将deleteIndex之后的向前移动
-        //0 1 2 3 5 6                   7
+        //0 1 2 3 5 6                ->  7
         for (int i = deleteIndex;i < userListSize;i++)
         {
             userList[i]=userList[i+1];
